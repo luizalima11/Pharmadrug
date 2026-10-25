@@ -1,3 +1,4 @@
+
 package com.pharmacy.repository;
 
 import com.pharmacy.model.Product;
@@ -13,24 +14,27 @@ import java.util.List;
 @Repository
 public class ProductRepository {
 
-    //Connection com o bando via JDBC
+    // Conexão com o banco de dados via JDBC
     private final Connection connection;
 
     public ProductRepository(Connection connection) {
         this.connection = connection;
     }
 
+    // Busca todos os produtos cadastrados no banco
     public List<Product> findAll() {
+
         List<Product> products = new ArrayList<>();
 
         String sql = """
                 SELECT id, nome, descricao, preco,
-                    categoria, estoque, imagem
+                       categoria, estoque, imagem
                 FROM produto
                 """;
 
         try (PreparedStatement statement = connection.prepareStatement(sql);
              ResultSet resultSet = statement.executeQuery()) {
+
             while (resultSet.next()) {
 
                 Product product = new Product();
@@ -41,25 +45,29 @@ public class ProductRepository {
                 product.setPrice(resultSet.getBigDecimal("preco"));
                 product.setCategory(resultSet.getString("categoria"));
                 product.setStock(resultSet.getInt("estoque"));
-                product.setImage(resultSet.getString("image"));
+                product.setImage(resultSet.getString("imagem"));
 
                 products.add(product);
             }
-        } catch (Exception e) {
-            throw new RuntimeException("Erro ao listar produtos", e);
+
+        } catch (Exception erro) {
+            throw new RuntimeException("Erro ao listar produtos.", erro);
         }
 
         return products;
     }
 
-
+    // Cadastra um novo produto no banco de dados
     public Product save(Product product) {
+
         String sql = """
-                INSERT INTO produto (nome, descricao, preco, categoria, estoque, imagem)
+                INSERT INTO produto
+                    (nome, descricao, preco, categoria, estoque, imagem)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """;
 
-        try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement statement = connection.prepareStatement(
+                sql, Statement.RETURN_GENERATED_KEYS)) {
 
             statement.setString(1, product.getName());
             statement.setString(2, product.getDescription());
@@ -70,6 +78,7 @@ public class ProductRepository {
 
             statement.executeUpdate();
 
+            // Recupera o ID gerado pelo banco
             try (ResultSet keys = statement.getGeneratedKeys()) {
                 if (keys.next()) {
                     product.setId(keys.getInt(1));
@@ -78,6 +87,45 @@ public class ProductRepository {
 
             return product;
 
-        } catch (Exception e) {throw new RuntimeException("Erro ao cadastrar prouto", e); }
+        } catch (Exception erro) {
+            throw new RuntimeException("Erro ao cadastrar produto.", erro);
+        }
+    }
+
+    // Atualiza os dados de um produto existente
+    public void update(Product product) {
+
+        String sql = """
+                UPDATE produto
+                SET nome = ?,
+                    descricao = ?,
+                    preco = ?,
+                    categoria = ?,
+                    estoque = ?,
+                    imagem = ?
+                WHERE id = ?
+                """;
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, product.getName());
+            statement.setString(2, product.getDescription());
+            statement.setBigDecimal(3, product.getPrice());
+            statement.setString(4, product.getCategory());
+            statement.setInt(5, product.getStock());
+            statement.setString(6, product.getImage());
+            statement.setInt(7, product.getId());
+
+            // Executa a atualização no banco
+            int linhasAlteradas = statement.executeUpdate();
+
+            // Verifica se o produto foi encontrado
+            if (linhasAlteradas == 0) {
+                throw new RuntimeException("Produto não encontrado.");
+            }
+
+        } catch (Exception erro) {
+            throw new RuntimeException("Erro ao atualizar produto.", erro);
+        }
     }
 }
